@@ -36,7 +36,14 @@ The task is episodic, and in order to solve the environment, your agent must get
 
 ### Instructions
 
-Follow the instructions in `Navigation.ipynb` to get started with training your own agent!  
+Follow the instructions in `Navigation.ipynb` to get started with training your own agent and test how it works! 
+
+#### Train and Test the Smart Agent in terminal
+1. Open up a terminal and go to the folder containing train.py and test.py.
+
+2. To train the smart agent: $python train.py
+
+3. To test the trained agent: $python test.py
 
 ### (Optional) Challenge: Learning from Pixels
 
