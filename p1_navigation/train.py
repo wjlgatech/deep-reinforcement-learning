@@ -4,7 +4,7 @@
 from unityagents import UnityEnvironment
 import numpy as np
 from collections import deque
-from dqnAgent import Agent
+from dqn_agent import Agent
 import torch
 import matplotlib.pyplot as plt
 
@@ -18,9 +18,11 @@ brain = env.brains[brain_name]
 # create an agent
 agent = Agent(state_size=brain.vector_observation_space_size, action_size=brain.vector_action_space_size, seed=0)
 
+from collections import deque
+from dqn_agent import Agent
+agent = Agent(state_size=brain.vector_observation_space_size, action_size=brain.vector_action_space_size, seed=0)
 
-# create the deep q-learning algorithm that the dqn agent can be trained on unity environment
-def dqn(n_episodes=2000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.995):
+def dqn(n_episodes=5000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.995):
     """Deep Q-Learning.
     
     Params
@@ -33,6 +35,7 @@ def dqn(n_episodes=2000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.99
     """
     scores = []                        # list containing scores from each episode
     scores_window = deque(maxlen=100)  # last 100 scores
+    scores_mean = []                   # list of scores averaged over the last 100 consecutive episode
     eps = eps_start                    # initialize epsilon
     for i_episode in range(1, n_episodes+1):
         #repl: state = env.reset()
@@ -60,21 +63,24 @@ def dqn(n_episodes=2000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.99
         if i_episode % 100 == 0:
             average_score = np.mean(scores_window)
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, average_score))
-        if np.mean(scores_window)>=20.0:
+            torch.save(agent.qnetwork_local.state_dict(), 'checkpoint.pth')
+            
+        if i_episode >=100:
+            scores_mean.append(np.mean(scores_window))
+        if np.mean(scores_window)>=13.0:
             print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode-100, np.mean(scores_window)))
             torch.save(agent.qnetwork_local.state_dict(), 'checkpoint.pth')
             break
-    return scores
+    return scores, scores_mean, agent
 
-scores = dqn()
+scores, scores_mean, agent = dqn()
 
-# visualize the scores
+# plot the scores_mean
+import matplotlib.pyplot as plt
+
 fig = plt.figure()
 ax = fig.add_subplot(111)
-plt.plot(np.arange(len(scores)), scores)
-plt.ylabel('Score')
+plt.plot(np.arange(len(scores_mean)), scores_mean)
+plt.ylabel('Mean Score')
 plt.xlabel('Episode #')
 plt.show()
-
-# Save the trained model (neural network weights)
-torch.save(agent.qnetwork_local.state_dict(), "dqnAgent_Trained_Model.pth")

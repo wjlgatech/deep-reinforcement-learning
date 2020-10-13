@@ -3,7 +3,7 @@
 
 from unityagents import UnityEnvironment
 import numpy as np
-from dqnAgent import Agent
+from dqn_agent import Agent
 import torch
 
 env = UnityEnvironment(file_name="Banana.app")
@@ -16,7 +16,7 @@ brain = env.brains[brain_name]
 agent = Agent(state_size=brain.vector_observation_space_size, action_size=brain.vector_action_space_size, seed=0)
 
 # Load trained model weights
-agent.qnetwork_local.load_state_dict(torch.load('dqnAgent_Trained_Model.pth'))
+agent.qnetwork_local.load_state_dict(torch.load('checkpoint.pth'))
 
 env_info = env.reset(train_mode=False)[brain_name]  # reset the environment
 state = env_info.vector_observations[0]            # get the current state

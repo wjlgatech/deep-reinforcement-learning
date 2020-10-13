@@ -2,32 +2,32 @@ import numpy as np
 import random
 from collections import namedtuple, deque
 
-from model import QNetwork
+#from model import QNetwork
 
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn as nn
 
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 64         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
-LR = 5e-4               # learning rate 
-UPDATE_EVERY = 4        # how often to update the network
+LR = 1e-3               # learning rate 
+UPDATE_EVERY = 50        # how often to update the network
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent():
-    """Interacts with and learns from the environment."""
+    """Agent interacts with and learns from the environment."""
 
     def __init__(self, state_size, action_size, seed):
         """Initialize an Agent object.
         
-        Params
-        ======
-            state_size (int): dimension of each state
-            action_size (int): dimension of each action
-            seed (int): random seed
+        INPUT
+        - state_size (int): dimension of each state
+        - action_size (int): dimension of each action
+        - seed (int): random seed
         """
         self.state_size = state_size
         self.action_size = action_size
@@ -44,6 +44,9 @@ class Agent():
         self.t_step = 0
     
     def step(self, state, action, reward, next_state, done):
+        """
+        agent learns from experience tuples like (state, action, reward, next_state, done)
+        """
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
         
@@ -55,13 +58,12 @@ class Agent():
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
 
-    def act(self, state, eps=0.):
-        """Returns actions for given state as per current policy.
+    def act(self, state, eps=0.0):
+        """agent acts on current policy: state->action.
         
-        Params
-        ======
-            state (array_like): current state
-            eps (float): epsilon, for epsilon-greedy action selection
+        INPUT:
+        - state (array_like): current state
+        - eps (float): epsilon, for epsilon-greedy action selection
         """
         state = torch.from_numpy(state).float().unsqueeze(0).to(device)
         self.qnetwork_local.eval()
@@ -76,12 +78,11 @@ class Agent():
             return random.choice(np.arange(self.action_size))
 
     def learn(self, experiences, gamma):
-        """Update value parameters using given batch of experience tuples.
+        """agent update its brain(qnetwork_local) parameters using experience batch.
 
-        Params
-        ======
-            experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
-            gamma (float): discount factor
+        INPUT
+        - experiences (Tuple[torch.Tensor]): (s, a, r, s', done) tuples 
+        - gamma (float): discount factor
         """
         states, actions, rewards, next_states, dones = experiences
 
@@ -104,14 +105,13 @@ class Agent():
         self.soft_update(self.qnetwork_local, self.qnetwork_target, TAU)                     
 
     def soft_update(self, local_model, target_model, tau):
-        """Soft update model parameters.
-        θ_target = τ*θ_local + (1 - τ)*θ_target
+        """agent soft updates model parameters.
+        θ_target = tau*θ_local + (1 - tau)*θ_target
 
-        Params
-        ======
-            local_model (PyTorch model): weights will be copied from
-            target_model (PyTorch model): weights will be copied to
-            tau (float): interpolation parameter 
+        INPUT
+        - local_model (PyTorch model): weights will be copied from
+        - target_model (PyTorch model): weights will be copied to
+        - tau (float): interpolation parameter 
         """
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
@@ -122,13 +122,11 @@ class ReplayBuffer:
 
     def __init__(self, action_size, buffer_size, batch_size, seed):
         """Initialize a ReplayBuffer object.
-
-        Params
-        ======
-            action_size (int): dimension of each action
-            buffer_size (int): maximum size of buffer
-            batch_size (int): size of each training batch
-            seed (int): random seed
+           INPUT:
+           - action_size (int): dimension of each action
+           - buffer_size (int): maximum size of buffer
+           - batch_size (int): size of each training batch
+           - seed (int): random seed
         """
         self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)  
@@ -156,3 +154,32 @@ class ReplayBuffer:
     def __len__(self):
         """Return the current size of internal memory."""
         return len(self.memory)
+    
+
+class QNetwork(nn.Module):
+    """Actor (Policy) Model."""
+
+    def __init__(self, state_size, action_size, seed, fc1_units=256, fc2_units=256, fc3_units=256):
+        """Initialize parameters and build model.
+           INPUT
+           - state_size (int): Dimension of each state
+           - action_size (int): Dimension of each action
+           - seed (int): Random seed
+           - fc1_units (int): Number of nodes in first hidden layer
+           - fc2_units (int): Number of nodes in second hidden layer
+           - fc3_units (int): Number of nodes in third hidden layer
+        """
+        super(QNetwork, self).__init__()
+        self.seed = torch.manual_seed(seed)
+        self.fc1 = nn.Linear(state_size, fc1_units)
+        self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.fc3 = nn.Linear(fc2_units, fc3_units)
+        self.action_layer = nn.Linear(fc3_units, action_size)
+
+    def forward(self, state):
+        """Build a network that maps state -> action values."""
+        x = F.relu(F.dropout(self.fc1(state)))
+        x = F.relu(F.dropout(self.fc2(x)))
+        x = F.relu(F.dropout(self.fc3(x)))
+        q_values = self.action_layer(x)
+        return q_values
